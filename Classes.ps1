@@ -109,7 +109,7 @@ class RconClient {
         }
     }
 
-    Send(
+    [string] Send(
         [string] $Command
     ){
         if (!$this._socket.Connected) {
@@ -123,7 +123,7 @@ class RconClient {
         $t = $this._sendSocket((New-Object RconPacket 2, $Command))
         $response = [System.Text.Encoding]::ASCII.GetString($t[12..($t.length)])
 
-        Write-Host $response
+        return $response
     }
 
     Reconnect() {
