@@ -1,19 +1,3 @@
-class RconServerAuthException : Exception {
-    [string] $additionalData
-
-    RconServerAuthException($Message, $additionalData) : base($Message) {
-        $this.additionalData = $additionalData
-    }
-}
-
-class RconServerCommandException : Exception {
-    [string] $additionalData
-
-    RconServerCommandException($Message, $additionalData) : base($Message) {
-        $this.additionalData = $additionalData
-    }
-}
-
 class RconPacket {
     # https://developer.valvesoftware.com/wiki/Source_RCON_Protocol
     hidden [byte[]] $pktSize
@@ -51,5 +35,141 @@ class RconPacket {
     [PSCustomObject] Construct() {
         $returnObj = $this.pktSize + $this.pktId + $this.PktCmdType + $this.PktCmdPayload + 0x00
         return $returnObj
+    }
+}
+
+class RconClient {
+    hidden [System.Net.Sockets.Socket] $_socket
+    hidden [bool] $_isAuthenticated
+
+    [string] $ServerAddress
+    [int] $ServerPort
+    
+    RconClient(
+        [String]$ServerAddress,
+        [int]$ServerPort
+    ){
+        # Validate params
+        if ($ServerPort -gt 65535 -or $ServerPort -le 0) {
+            throw "Server port '$ServerPort' is outside of acceptable range."
+        }
+
+        # Init class vars
+        $this._isAuthenticated = $false
+        $this.ServerAddress = $ServerAddress
+        $this.ServerPort = $ServerPort
+
+        try {
+            $this._socket = [System.Net.Sockets.Socket]::New(
+                [System.Net.Sockets.AddressFamily]::InterNetwork,
+                [System.Net.Sockets.SocketType]::Stream,
+                [System.Net.Sockets.ProtocolType]::TCP
+            )
+
+            $this._socket.Connect($serverAddress, $serverPort)
+        } catch {
+            Write-Host "Server connection has failed." -f red
+
+            throw $_.Exception.Message
+        }
+    }
+
+    # ============================
+    #           Public
+    # ============================
+    Quit() {
+        Write-Warning "Destroying socket."
+        if ($this._socket.Connected) {
+            $this._socket.Close()
+        } else {
+            throw "Already in disconnected state."
+        }
+    }
+
+    Authenticate(
+        [string] $Password
+    ){
+        if ($this._isAuthenticated) {
+            throw "Already authenticated."
+        }
+
+        $p = New-Object RconPacket 3, $Password
+
+        # Parse buffer
+        # Server will return FF FF FF FF (-1) in the ID field if auth failed or not authenticated
+        # The following will return FALSE if ID field is not FF FF FF FF, indicating SUCCESS
+        $response = $this._sendSocket($p)
+        $responseVerdict = ((Compare-Object $response[4..7] @(,0xFF * 4)).Count -gt 0)
+
+        if ($responseVerdict) {
+            $this._isAuthenticated = $true
+        } else {
+            $this._isAuthenticated = $false
+            throw "Authentication failed due to bad password."
+        }
+    }
+
+    Send(
+        [string] $Command
+    ){
+        if (!$this._socket.Connected) {
+            throw "Socket is not connected."
+        }
+        if (!$this._isAuthenticated) {
+            throw "Client not yet authenticated."
+        }
+
+        # Response begins at 13th byte
+        $t = $this._sendSocket((New-Object RconPacket 2, $Command))
+        $response = [System.Text.Encoding]::ASCII.GetString($t[12..($t.length)])
+
+        Write-Host $response
+    }
+
+    Reconnect() {
+        if ($this._socket.Connected) {
+            throw "Socket is already connected."
+        }
+
+        $this._isAuthenticated = $false
+        try {
+            $this._socket.Connect($this.ServerAddress, $this.ServerPort)
+        } catch {
+            throw $_
+        }
+    }
+
+    # ============================
+    #           Private
+    # ============================
+    [byte[]] _sendSocket(
+        [RconPacket] $packet
+    ){
+        if (!$this._socket.Connected) {
+            throw "Socket is not connected."
+        }
+
+        try {
+            $toSend = $packet.Construct()
+            $buf = New-Object System.Byte[] 100
+    
+            $this._socket.Send($toSend) | Out-Null
+            $this._socket.Receive($buf)
+    
+            return $buf
+        } catch {
+            throw $_
+        }
+    }
+    
+    # ============================
+    #           Getters
+    # ============================
+    [bool] IsAuthenticated() {
+        return $this._isAuthenticated
+    }
+
+    [bool] IsConnected() {
+        return $this._socket.Connected
     }
 }
