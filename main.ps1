@@ -25,7 +25,7 @@ try {
 }
 
 # Send commands
-Write-Host 'You are now connected. Abort with "quit".' -f yellow
+''; Write-Host 'You are now connected. Abort with "quit".' -f yellow
 while ($true) {
     Write-Host "> " -NoNewLine
     $command = $Host.UI.ReadLine()
