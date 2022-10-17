@@ -1,3 +1,5 @@
+$ErrorActionPreference = [System.Management.Automation.ActionPreference]::Stop
+
 try {
     . ".\Classes.ps1"
 } catch {
@@ -21,7 +23,6 @@ try {
 } catch {
     if ($RconClient.IsConnected()) { $RconClient.Quit() }
     throw $_
-} finally {
 }
 
 # Send commands
