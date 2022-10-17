@@ -36,7 +36,10 @@ while ($true) {
             exit
         }
 
-        $RconClient.Send($Command)
+        $response = $RconClient.Send($Command)
+
+        # Specific to minecraft
+        $response.split("/") | % { Write-Host "/$_" }
     } catch {
         throw $_
     }
