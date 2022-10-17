@@ -151,7 +151,7 @@ class RconClient {
 
         try {
             $toSend = $packet.Construct()
-            $buf = New-Object System.Byte[] 100
+            $buf = New-Object System.Byte[] 4096
     
             $this._socket.Send($toSend) | Out-Null
             $this._socket.Receive($buf)
