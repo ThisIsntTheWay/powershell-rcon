@@ -94,11 +94,11 @@ class RconClient {
         }
 
         $p = New-Object RconPacket 3, $Password
+        $response = $this._sendSocket($p)
 
         # Parse buffer
         # Server will return FF FF FF FF (-1) in the ID field if auth failed or not authenticated
         # The following will return FALSE if ID field is not FF FF FF FF, indicating SUCCESS
-        $response = $this._sendSocket($p)
         $responseVerdict = ((Compare-Object $response[4..7] @(,0xFF * 4)).Count -gt 0)
 
         if ($responseVerdict) {
@@ -119,7 +119,7 @@ class RconClient {
             throw "Client not yet authenticated."
         }
 
-        # Response begins at 13th byte
+        # Response begins at the 13th byte
         $t = $this._sendSocket((New-Object RconPacket 2, $Command))
         $response = [System.Text.Encoding]::ASCII.GetString($t[12..($t.length)])
 
