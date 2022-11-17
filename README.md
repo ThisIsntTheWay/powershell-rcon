@@ -3,7 +3,7 @@ RCON client written in PowerShell.
 Conforms to the RCON protocol specification as declared by the [valve dev docs](https://developer.valvesoftware.com/wiki/Source_RCON_Protocol).
 
 ## Usage
-```
+```PowerShell
 # Connect to server and authenticate
 $RconClient = New-Object RconClient <Address>, <Port>
 $RconClient.Authenticate(<Password>)
